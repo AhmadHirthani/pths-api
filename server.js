@@ -2,18 +2,15 @@
 'use strict';
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');
 const ejs = require('ejs');
-const paypal = require('paypal-rest-sdk');
-const sendMail = require('./8-send-email/send-email.js');
-
 require('dotenv').config();
 var bodyParser = require('body-parser')
 
+const tweets = require('./auth/lib/tweets/tweets-collection.js');
 
-const routes = require('./auth/router');
-const error404 = require('./middleware/404.js');
-const error500 = require('./middleware/500.js');
+ 
+
+
 const app = express();
 app.use(express.json());
 // parse application/x-www-form-urlencoded
@@ -22,9 +19,6 @@ app.use(bodyParser.urlencoded({ extended: false }))
 // app.use(bodyParser.json())
 app.set('view engine', 'ejs');
 app.get('/', (req, res) => res.render('index'));
-// routes to handle payments
-// app.post('/editTweet', editOneUnlabeledTweet);
-// app.get('/tweets', getOneUnlabeledTweet);
 
 
 app.all("*", (req, res, next) => {
@@ -43,14 +37,116 @@ app.all("*", (req, res, next) => {
   });
 
 
-app.use(cors());
-app.use(morgan('dev'));
-app.use(routes);
-app.get('/bad', (req, res) => {
-    throw new Error('bad Request .... ');
-});
-app.use('*', error404);
-app.use(error500);
+// app.use(cors());
+// app.use(morgan('dev'));
+// app.get('/bad', (req, res) => {
+//     throw new Error('bad Request .... ');
+// });
+// app.use('*', error404);
+// app.use(error500);
+
+
+
+
+
+
+//routes
+app.patch('/tweets/:id', editOneUnlabeledTweet);
+app.get('/tweet/:userId', getOneUnlabeledTweet);
+app.get('/tweets/:userId', getAllTweetsForOneUser);
+
+app.get('/', getAllTweets);
+// router.get('/process', addUsersNumbers);
+
+
+
+function getOneUnlabeledTweet(req, res) {
+    console.log('getOneUnlabeledTweet called');
+    let userId = req.params.userId;
+    tweets.get({ labelingUser: userId, label: 'Not labeled' }).then(allTweets => {
+
+        // tweets.getOne({ label: 'Not labeled', labelingUser: userId }).then(result => {
+        //     console.log('result>>> ', result);
+        //     res.json({ count: allTweets.length, result: result })
+
+        // })
+        res.json({ UnlabeledTweets: allTweets.length, Tweet: allTweets[0] })
+
+    })
+
+
+
+}
+
+
+function getAllTweetsForOneUser(req, res) {
+    console.log('getAllTweetsForOneUser called');
+    let userId = req.params.userId;
+    console.log({ userId });
+    tweets.get({ labelingUser: userId }).then(result => {
+        console.log('result>>> ', result);
+        res.json({ count: result.length, result: result })
+    })
+}
+
+function getAllTweets(req, res) {
+    console.log('getAllTweets called');
+    tweets.get().then(result => {
+        console.log('result>>> ', result);
+        res.json({ count: result.length, result: result })
+    })
+}
+
+function editOneUnlabeledTweet(req, res) {
+    console.log('editOneUnlabeledTweet called');
+
+    let id = req.params.id;
+    let newLabel = req.body.label;
+    console.log({ id });
+    console.log({ newLabel });
+
+    // req.model.update(postId, { comments: commntsArray }).then(result => {
+
+    tweets.update(id, { label: newLabel }).then(result => {
+        console.log('updating result>>> ', result);
+        res.json(result)
+    })
+}
+
+function addUsersNumbers(req, res) {
+    console.log('getAllTweets called');
+    tweets.get().then(results => {
+        results.forEach((element, idx) => {
+            console.log({ idx });
+            let userId;
+            if (idx >= 0 && idx < 3200) {
+                userId = 1;
+            } else if (idx >= 3200 && idx < 6400) {
+                userId = 2;
+            } else if (idx >= 6400 && idx < 9600) {
+                userId = 3;
+            } else if (idx >= 9600 && idx < 12800) {
+                userId = 4;
+            } else {
+                userId = 5;
+            }
+            // console.log('element._id>>>', element._id);
+            tweets.update(element._id, { labelingUser: userId }).then(result => {
+                console.log('updating labelingUser result>>> ', result);
+                // res.json(result)
+            })
+
+        });
+
+        // console.log('result>>> ', result);
+        // res.json(result)
+    })
+}
+
+
+
+
+
 module.exports = {
     server: app,
     start: port => {
