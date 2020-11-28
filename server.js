@@ -8,7 +8,7 @@ var bodyParser = require('body-parser')
 
 const tweets = require('./auth/lib/tweets/tweets-collection.js');
 
- 
+
 
 
 const app = express();
@@ -24,17 +24,17 @@ app.get('/', (req, res) => res.render('index'));
 app.all("*", (req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS",
+        "Access-Control-Allow-Methods",
+        "GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS",
     );
-  
+
     res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     );
     console.log(req.method, req.url);
     next();
-  });
+});
 
 
 // app.use(cors());
@@ -53,29 +53,33 @@ app.all("*", (req, res, next) => {
 //routes
 app.patch('/tweets/:id', editOneUnlabeledTweet);
 app.get('/tweet/:userId', getOneUnlabeledTweet);
+app.get('/labeled-tweets/:userId', getLabeledTweetForOneUser);
+
 app.get('/tweets/:userId', getAllTweetsForOneUser);
 
 app.get('/', getAllTweets);
 // router.get('/process', addUsersNumbers);
 
 
+function getLabeledTweetForOneUser(req, res) {
+    console.log('getLabeledTweetForOneUser called');
+    let userId = req.params.userId;
+    tweets.get({ labelingUser: userId, 'label': { $in: ['positive','negative' ]}}).then(allTweets => {
+        res.json({ labeledTweetsCount: allTweets.length, labeledTweets: allTweets })
+    })
+}
+
 
 function getOneUnlabeledTweet(req, res) {
     console.log('getOneUnlabeledTweet called');
     let userId = req.params.userId;
     tweets.get({ labelingUser: userId, label: 'Not labeled' }).then(allTweets => {
-
         // tweets.getOne({ label: 'Not labeled', labelingUser: userId }).then(result => {
         //     console.log('result>>> ', result);
         //     res.json({ count: allTweets.length, result: result })
-
         // })
         res.json({ UnlabeledTweets: allTweets.length, Tweet: allTweets[0] })
-
     })
-
-
-
 }
 
 
@@ -104,9 +108,7 @@ function editOneUnlabeledTweet(req, res) {
     let newLabel = req.body.label;
     console.log({ id });
     console.log({ newLabel });
-
     // req.model.update(postId, { comments: commntsArray }).then(result => {
-
     tweets.update(id, { label: newLabel }).then(result => {
         console.log('updating result>>> ', result);
         res.json(result)
@@ -142,10 +144,6 @@ function addUsersNumbers(req, res) {
         // res.json(result)
     })
 }
-
-
-
-
 
 module.exports = {
     server: app,
